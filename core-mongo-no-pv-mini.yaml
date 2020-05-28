@@ -23,6 +23,11 @@ spec:
     - name: core-mongo
       image: mongo
       env:
+      - name: MONGO_USER_PASS
+        valueFrom:
+            secretKeyRef:
+                name: vault
+                key: dbpass
       - name: MONGO_INITDB_ROOT_USERNAME
         valueFrom:
             secretKeyRef:
@@ -36,5 +41,12 @@ spec:
       ports:
           - containerPort: 27017
       command:
-          - mongod
-          - --bind_ip_all
+          - /bin/bash
+          - -c
+          - |
+            mongod --bind_ip_all &
+            sleep 5
+            echo "db.createUser({'user':'core-infra', 'pwd':'$MONGO_USER_PASS', 'roles':['readWrite']});" > /tmp/mongosetup.js
+            cat /tmp/mongosetup.js
+            mongo process /tmp/mongosetup.js
+            while [ 1 ]; do sleep 3600; done;
